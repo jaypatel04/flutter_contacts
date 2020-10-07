@@ -156,7 +156,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 }
                 break;
             }
-            case deleteContactsByIdentifiersMethod : {
+            case deleteContactsByIdentifiersMethod: {
                 String identifierString = (String) call.argument("identifiers");
                 if (identifierString == null) {
                     result.success(null);
@@ -569,7 +569,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 for (Contact c : contacts) {
                     contactMaps.add(c.toSummaryMap());
                 }
-            }else {
+            } else {
                 for (Contact c : contacts) {
                     contactMaps.add(c.toMap());
                 }
@@ -627,7 +627,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
 
             String selectionString = "";
 
-            for (String i: identifiers) {
+            for (String i : identifiers) {
                 selectionString += "?,";
             }
             selection += (" AND " + ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) + ")");
@@ -681,7 +681,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
 
             String selectionString = "";
 
-            for (String i: identifiers) {
+            for (String i : identifiers) {
                 selectionString += "?,";
             }
             selection += (" AND " + ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) + ")");
@@ -1214,7 +1214,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         if (identifiers != null) {
             String selectionString = "";
 
-            for (String i: identifiers) {
+            for (String i : identifiers) {
                 selectionString += "?,";
             }
             String selection = (ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) +
@@ -1351,11 +1351,18 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 .withValue(StructuredName.PHONETIC_FAMILY_NAME, contact.phoneticFamilyName);
         ops.add(op.build());
 
+        String rawContactId = getRawContactId(contact.identifier);
+
+        if (rawContactId == null || rawContactId.isEmpty()) {
+            System.out.println("Raw id is null for " + contact.identifier);
+            return false;
+        }
+
         // Insert data back into contact
         // Organisation
         op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
+                .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
                 .withValue(Organization.TYPE, Organization.TYPE_WORK)
                 .withValue(Organization.COMPANY, contact.company)
                 .withValue(Organization.DEPARTMENT, contact.department)
@@ -1363,146 +1370,173 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         ops.add(op.build());
 
         // Note
-        op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Note.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                .withValue(CommonDataKinds.Note.NOTE, contact.note);
-        ops.add(op.build());
+        if (contact.note != null) {
+            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Note.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(CommonDataKinds.Note.NOTE, contact.note);
+            ops.add(op.build());
+        }
 
         // Sip
-        op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                .withValue(CommonDataKinds.SipAddress.SIP_ADDRESS, contact.sip);
-        ops.add(op.build());
+        if (contact.sip != null) {
+            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(CommonDataKinds.SipAddress.SIP_ADDRESS, contact.sip);
+            ops.add(op.build());
+        }
 
         // Nick name
-        op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Nickname.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                .withValue(CommonDataKinds.Nickname.NAME, contact.nickname);
-        ops.add(op.build());
+        if (contact.nickname != null) {
+            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Nickname.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(CommonDataKinds.Nickname.NAME, contact.nickname);
+            ops.add(op.build());
+        }
 
         //Photo
-        op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                .withValue(ContactsContract.Data.IS_SUPER_PRIMARY, 1)
-                .withValue(CommonDataKinds.Photo.PHOTO, contact.avatar);
-        ops.add(op.build());
+        if (contact.avatar != null && contact.avatar.length > 0) {
+            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Photo.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(ContactsContract.Data.IS_SUPER_PRIMARY, 1)
+                    .withValue(CommonDataKinds.Photo.PHOTO, contact.avatar);
+            ops.add(op.build());
+        }
 
         //Phones
-        for (Item phone : contact.phones) {
-            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                    .withValue(CommonDataKinds.Phone.NUMBER, phone.value)
-                    .withValue(CommonDataKinds.Phone.LABEL, phone.label)
-                    .withValue(CommonDataKinds.Phone.TYPE, Item.stringToPhoneType(phone.label));
-            ops.add(op.build());
+        if (contact.phones != null && contact.phones.size() > 0) {
+            for (Item phone : contact.phones) {
+                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                        .withValue(CommonDataKinds.Phone.NUMBER, phone.value)
+                        .withValue(CommonDataKinds.Phone.LABEL, phone.label)
+                        .withValue(CommonDataKinds.Phone.TYPE, Item.stringToPhoneType(phone.label));
+                ops.add(op.build());
+            }
         }
 
         // Email
-        for (Item email : contact.emails) {
-            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                    .withValue(CommonDataKinds.Email.ADDRESS, email.value)
-                    .withValue(Email.LABEL, email.label)
-                    .withValue(CommonDataKinds.Email.TYPE, Item.stringToEmailType(email.label));
-            ops.add(op.build());
+        if (contact.emails != null && contact.emails.size() > 0) {
+            for (Item email : contact.emails) {
+                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                        .withValue(CommonDataKinds.Email.ADDRESS, email.value)
+                        .withValue(Email.LABEL, email.label)
+                        .withValue(CommonDataKinds.Email.TYPE, Item.stringToEmailType(email.label));
+                ops.add(op.build());
+            }
         }
 
         // Postal address
-        for (PostalAddress address : contact.postalAddresses) {
-            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                    .withValue(StructuredPostal.LABEL, address.label)
-                    .withValue(StructuredPostal.TYPE, PostalAddress.stringToPostalAddressType(address.label))
-                    .withValue(StructuredPostal.STREET, address.street)
-                    .withValue(StructuredPostal.NEIGHBORHOOD, address.locality)
-                    .withValue(StructuredPostal.CITY, address.city)
-                    .withValue(StructuredPostal.REGION, address.region)
-                    .withValue(StructuredPostal.POSTCODE, address.postcode)
-                    .withValue(StructuredPostal.COUNTRY, address.country);
-            ops.add(op.build());
+        if (contact.postalAddresses != null && contact.postalAddresses.size() > 0) {
+            for (PostalAddress address : contact.postalAddresses) {
+                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                        .withValue(StructuredPostal.LABEL, address.label)
+                        .withValue(StructuredPostal.TYPE, PostalAddress.stringToPostalAddressType(address.label))
+                        .withValue(StructuredPostal.STREET, address.street)
+                        .withValue(StructuredPostal.NEIGHBORHOOD, address.locality)
+                        .withValue(StructuredPostal.CITY, address.city)
+                        .withValue(StructuredPostal.REGION, address.region)
+                        .withValue(StructuredPostal.POSTCODE, address.postcode)
+                        .withValue(StructuredPostal.COUNTRY, address.country);
+                ops.add(op.build());
+            }
         }
 
         // Date
-        op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Event.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                .withValue(CommonDataKinds.Event.START_DATE, contact.birthday)
-                .withValue(CommonDataKinds.Event.TYPE, Item.stringToDatesType("birthday"));
-        ops.add(op.build());
-
-        for (Item date : contact.dates) {
+        if (contact.birthday != null) {
             op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Event.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                    .withValue(CommonDataKinds.Event.LABEL, date.label)
-                    .withValue(CommonDataKinds.Event.START_DATE, date.value)
-                    .withValue(CommonDataKinds.Event.TYPE, Item.stringToDatesType(date.label));
+                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(CommonDataKinds.Event.START_DATE, contact.birthday)
+                    .withValue(CommonDataKinds.Event.TYPE, Item.stringToDatesType("birthday"));
             ops.add(op.build());
         }
 
+        if (contact.dates != null && contact.dates.size() > 0) {
+            for (Item date : contact.dates) {
+                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Event.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                        .withValue(CommonDataKinds.Event.LABEL, date.label)
+                        .withValue(CommonDataKinds.Event.START_DATE, date.value)
+                        .withValue(CommonDataKinds.Event.TYPE, Item.stringToDatesType(date.label));
+                ops.add(op.build());
+            }
+        }
+
         // Website
-        for (Item website : contact.websites) {
-            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Website.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                    .withValue(CommonDataKinds.Website.LABEL, website.label)
-                    .withValue(CommonDataKinds.Website.URL, website.value)
-                    .withValue(CommonDataKinds.Website.TYPE, Item.stringToWebsiteType(website.label));
-            ops.add(op.build());
+        if (contact.websites != null && contact.websites.size() > 0) {
+            for (Item website : contact.websites) {
+                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Website.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                        .withValue(CommonDataKinds.Website.LABEL, website.label)
+                        .withValue(CommonDataKinds.Website.URL, website.value)
+                        .withValue(CommonDataKinds.Website.TYPE, Item.stringToWebsiteType(website.label));
+                ops.add(op.build());
+            }
         }
 
 
         // Instant message address
-        for (Item im : contact.instantMessageAddresses) {
-            if (Item.stringToInstantMessageAddressProtocol(im.label) == CommonDataKinds.Im.PROTOCOL_CUSTOM) {
-                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Im.CONTENT_ITEM_TYPE)
-                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                        .withValue(CommonDataKinds.Im.DATA, im.value)
-                        .withValue(CommonDataKinds.Im.CUSTOM_PROTOCOL, im.label)
-                        .withValue(CommonDataKinds.Im.TYPE, Item.stringToInstantMessageAddressProtocol(im.label))
-                        .withValue(CommonDataKinds.Im.PROTOCOL, Item.stringToInstantMessageAddressProtocol(im.label));
-            } else {
-                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Im.CONTENT_ITEM_TYPE)
-                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                        .withValue(CommonDataKinds.Im.DATA, im.value)
-                        .withValue(CommonDataKinds.Im.TYPE, Item.stringToInstantMessageAddressProtocol(im.label))
-                        .withValue(CommonDataKinds.Im.PROTOCOL, Item.stringToInstantMessageAddressProtocol(im.label));
+        if (contact.instantMessageAddresses != null && contact.instantMessageAddresses.size() > 0) {
+            for (Item im : contact.instantMessageAddresses) {
+                if (Item.stringToInstantMessageAddressProtocol(im.label) == CommonDataKinds.Im.PROTOCOL_CUSTOM) {
+                    op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                            .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Im.CONTENT_ITEM_TYPE)
+                            .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                            .withValue(CommonDataKinds.Im.DATA, im.value)
+                            .withValue(CommonDataKinds.Im.CUSTOM_PROTOCOL, im.label)
+                            .withValue(CommonDataKinds.Im.TYPE, Item.stringToInstantMessageAddressProtocol(im.label))
+                            .withValue(CommonDataKinds.Im.PROTOCOL, Item.stringToInstantMessageAddressProtocol(im.label));
+                } else {
+                    op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                            .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Im.CONTENT_ITEM_TYPE)
+                            .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                            .withValue(CommonDataKinds.Im.DATA, im.value)
+                            .withValue(CommonDataKinds.Im.TYPE, Item.stringToInstantMessageAddressProtocol(im.label))
+                            .withValue(CommonDataKinds.Im.PROTOCOL, Item.stringToInstantMessageAddressProtocol(im.label));
+                }
+                ops.add(op.build());
             }
-            ops.add(op.build());
         }
 
         // Relation
-        for (Item relation : contact.relations) {
-            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Relation.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                    .withValue(CommonDataKinds.Relation.NAME, relation.value)
-                    .withValue(CommonDataKinds.Relation.LABEL, relation.label)
-                    .withValue(CommonDataKinds.Relation.TYPE, Item.stringToRelationType(relation.label));
-            ops.add(op.build());
+        if (contact.relations != null && contact.relations.size() > 0) {
+            for (Item relation : contact.relations) {
+                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Relation.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                        .withValue(CommonDataKinds.Relation.NAME, relation.value)
+                        .withValue(CommonDataKinds.Relation.LABEL, relation.label)
+                        .withValue(CommonDataKinds.Relation.TYPE, Item.stringToRelationType(relation.label));
+                ops.add(op.build());
+            }
         }
 
         // Labels
-        for (String label : contact.labels) {
-            long groupId = getLabelGroupId(label);
-            if (groupId < 0L) {
-                groupId = insertLabelGroup(label);
-            }
-            if (groupId > 0L) {
-                op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                        .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE)
-                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, contact.identifier)
-                        .withValue(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID, groupId);
-                ops.add(op.build());
+
+        if (contact.labels != null && contact.labels.size() > 0) {
+            for (String label : contact.labels) {
+                long groupId = getLabelGroupId(label);
+                if (groupId < 0L) {
+                    groupId = insertLabelGroup(label);
+                }
+                if (groupId > 0L) {
+                    op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                            .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE)
+                            .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                            .withValue(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID, groupId);
+                    ops.add(op.build());
+                }
             }
         }
 
