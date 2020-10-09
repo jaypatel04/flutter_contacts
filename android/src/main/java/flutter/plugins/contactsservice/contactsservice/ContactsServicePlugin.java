@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -1286,9 +1287,8 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
             String nicknameId = null;
             String sipId = null;
             String noteId = null;
-
-            List<String> labelIdList = new ArrayList<>();
-
+            Map<String, String> existingLabelIdMap = new HashMap<>();
+            String birthdayId = null;
             while (cursor != null && cursor.moveToNext()) {
                 String id = cursor.getString(cursor.getColumnIndex(BaseColumns._ID));
                 String mimeType = cursor.getString(cursor.getColumnIndex(ContactsContract.Data.MIMETYPE));
@@ -1304,7 +1304,13 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else if (mimeType.equals(CommonDataKinds.Note.CONTENT_ITEM_TYPE)) {
                     noteId = id;
                 } else if (mimeType.equals(CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE)) {
-                    labelIdList.add(id);
+                    String groupId = cursor.getString(cursor.getColumnIndex(CommonDataKinds.GroupMembership.DATA1));
+                    existingLabelIdMap.put(groupId,id);
+                } else if (mimeType.equals(CommonDataKinds.Event.CONTENT_ITEM_TYPE)) {
+                    int eventType = cursor.getInt(cursor.getColumnIndex(CommonDataKinds.Event.TYPE));
+                    if (eventType == CommonDataKinds.Event.TYPE_BIRTHDAY) {
+                        birthdayId = id;
+                    }
                 }
             }
 
@@ -1442,31 +1448,15 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 ops.add(op.build());
             }
 
-            // if current id does not contain incoming id then delete current id
-            // if current id contains incoming id then update current id (with incoming contents)
-            // if there is no incoming id then insert incoming id (with incoming contents)
-
             addEmailsUpdateOperations(rawContactId, currentContact.emails, contact.emails, ops);
             addPhoneUpdateOperations(rawContactId, currentContact.phones, contact.phones, ops);
             addPostalAddressUpdateOperations(rawContactId, currentContact.postalAddresses, contact.postalAddresses, ops);
             addWebsiteUpdateOperations(rawContactId, currentContact.websites, contact.websites, ops);
             addImUpdateOperations(rawContactId, currentContact.instantMessageAddresses, contact.instantMessageAddresses, ops);
             addRelationUpdateOperations(rawContactId, currentContact.relations, contact.relations, ops);
-            addLabelUpdateOperations(rawContactId, labelIdList, contact.labels, ops);
+            addLabelUpdateOperations(rawContactId, existingLabelIdMap, currentContact.labels, contact.labels, ops);
             addEventUpdateOperations(rawContactId, currentContact.dates, contact.dates, ops);
-
-            // ToDo process birthday
-
-            /*if (op != null) {
-                op.withYieldAllowed(true);
-            }*/
-
-            // update contact names
-            // update organization structure, nickname, sip, photo, note
-            // check and insert, update or delete all the list
-
-            // Drop all details about contact except names
-
+            addBirthdayOperation(birthdayId, currentContact.birthday, contact.birthday, ops);
 
             ContentProviderResult[] results = contentResolver.applyBatch(ContactsContract.AUTHORITY, ops);
             return true;
@@ -1531,8 +1521,6 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         if (!equalsStrings(contact.jobTitle, currentContact.jobTitle)) {
             return false;
         }
-
-
         return true;
     }
 
@@ -1577,7 +1565,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else if (existingIdList.contains(item.identifier)) {
                     // found update this item
                     for (Item existing : existingItemList) {
-                        if (existing.identifier.equals(item.identifier)) {
+                        if (item.identifier.equals(existing.identifier) && !item.equalValues(existing)) {
                             String[] queryArg = new String[]{item.identifier, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE};
                             op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                                     .withSelection(queryCommon, queryArg)
@@ -1646,7 +1634,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else if (existingIdList.contains(item.identifier)) {
                     // found update this item
                     for (Item existing : existingItemList) {
-                        if (existing.identifier.equals(item.identifier)) {
+                        if (item.identifier.equals(existing.identifier) && !item.equalValues(existing)) {
                             String[] queryArg = new String[]{item.identifier, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE};
                             op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                                     .withSelection(queryCommon, queryArg)
@@ -1723,7 +1711,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else if (existingIdList.contains(item.identifier)) {
                     // found update this item
                     for (PostalAddress existing : existingItemList) {
-                        if (existing.identifier.equals(item.identifier)) {
+                        if (item.identifier.equals(existing.identifier) && !item.equalValues(existing)) {
                             String[] queryArg = new String[]{item.identifier, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE};
                             op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                                     .withSelection(queryCommon, queryArg)
@@ -1795,7 +1783,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else if (existingIdList.contains(item.identifier)) {
                     // found update this item
                     for (Item existing : existingItemList) {
-                        if (existing.identifier.equals(item.identifier)) {
+                        if (item.identifier.equals(existing.identifier) && !item.equalValues(existing)) {
                             String[] queryArg = new String[]{item.identifier, ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE};
                             op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                                     .withSelection(queryCommon, queryArg)
@@ -1873,7 +1861,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else if (existingIdList.contains(item.identifier)) {
                     // found update this item
                     for (Item existing : existingItemList) {
-                        if (existing.identifier.equals(item.identifier)) {
+                        if (item.identifier.equals(existing.identifier) && !item.equalValues(existing)) {
                             String[] queryArg = new String[]{item.identifier, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE};
 
                             op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
@@ -1948,7 +1936,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else if (existingIdList.contains(item.identifier)) {
                     // found update this item
                     for (Item existing : existingItemList) {
-                        if (existing.identifier.equals(item.identifier)) {
+                        if (item.identifier.equals(existing.identifier) && !item.equalValues(existing)) {
                             String[] queryArg = new String[]{item.identifier, ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE};
 
                             op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
@@ -1976,86 +1964,116 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         }
     }
 
-    // Todo check and confirm with Jay
-    private void addLabelUpdateOperations(String rawContactId, List<String> existingIdList, ArrayList<String> newItemList,
+    private void addLabelUpdateOperations(String rawContactId, Map<String, String> existingIdMap, List<String> existingItemList,
+                                          ArrayList<String> newItemList,
                                           ArrayList<ContentProviderOperation> ops) {
+
         ContentProviderOperation.Builder op;
         String queryCommon = BaseColumns._ID + "=? AND " + ContactsContract.Data.MIMETYPE + "=?";
-        if (existingIdList.size() > 0 && newItemList.size() == 0) {
+        if (existingItemList.size() > 0 && newItemList.size() == 0) {
             // remove all current ids
-            for (String id : existingIdList) {
-                String[] queryArg = new String[]{id, ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE};
-                op = ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
-                        .withSelection(queryCommon, queryArg);
-                ops.add(op.build());
+            for (String item : existingItemList) {
+                long groupId = getGroupId(item);
+                if (groupId > 0L) {
+                    String rowId = existingIdMap.get(groupId);
+                    if (rowId != null) {
+                        String[] queryArg = new String[]{rowId, ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE};
+                        op = ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                                .withSelection(queryCommon, queryArg);
+                        ops.add(op.build());
+                    }
+                }
             }
-        } else if (newItemList.size() > 0 && existingIdList.size() == 0) {
+        } else if (newItemList.size() > 0 && existingItemList.size() == 0) {
             // insert all incoming ids
             for (String item : newItemList) {
-                long groupId = getLabelGroupId(item);
-                if (groupId < 0L) {
-                    groupId = insertLabelGroup(item);
-                }
+                long groupId = getGroupId(item);
                 if (groupId > 0L) {
                     op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                             .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE)
                             .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
                             .withValue(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID, groupId);
-
                     ops.add(op.build());
                 }
             }
         } else {
-            for (String item : newItemList) {
-                if (item == null || item.isEmpty()) {
-                    // insert
-                    long groupId = getLabelGroupId(item);
-                    if (groupId < 0L) {
-                        groupId = insertLabelGroup(item);
+            for (String item: existingItemList) {
+                if (!newItemList.contains(item)) {
+                    long groupId = getGroupId(item);
+                    if (groupId > 0L) {
+                        String rowId = existingIdMap.get(groupId);
+                        if (rowId != null) {
+                            String[] queryArg = new String[]{rowId, ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE};
+                            op = ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                                    .withSelection(queryCommon, queryArg);
+                            ops.add(op.build());
+                        }
                     }
+                }
+            }
+
+            for (String item: newItemList) {
+                if (!existingItemList.contains(item)) {
+                    long groupId = getGroupId(item);
                     if (groupId > 0L) {
                         op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                                 .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE)
                                 .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
                                 .withValue(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID, groupId);
-
                         ops.add(op.build());
                     }
-                } else if (existingIdList.contains(item)) {
-                    // found update this item
-                    long groupId = getLabelGroupId(item);
-                    if (groupId < 0L) {
-                        groupId = insertLabelGroup(item);
-                    }
-                    if (groupId > 0L) {
-                        String[] queryArg = new String[]{item, ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE};
-
-                        op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
-                                .withSelection(queryCommon, queryArg)
-                                .withValue(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID, groupId);
-
-                        ops.add(op.build());
-                        existingIdList.remove(item);
-                    }
-                }
-            }
-
-            if (existingIdList.size() > 0) {
-                // remove all ids
-                for (String id : existingIdList) {
-                    String[] queryArg = new String[]{id, ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE};
-                    op = ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
-                            .withSelection(queryCommon, queryArg);
-                    ops.add(op.build());
                 }
             }
         }
     }
 
-    private void addEventUpdateOperations(String rawContactId, List<Item> existingItemList, ArrayList<Item> newItemList,
-                                          ArrayList<ContentProviderOperation> ops) {
+    private long getGroupId(String groupName) {
+        long groupId = getLabelGroupId(groupName);
+        if (groupId < 0L) {
+            groupId = insertLabelGroup(groupName);
+        }
+        return groupId;
+    }
+
+    private void addBirthdayOperation(String birthdayId, String existingBirthday, String newBirthday, ArrayList<ContentProviderOperation> ops) {
         ContentProviderOperation.Builder op;
         String queryCommon = BaseColumns._ID + "=? AND " + ContactsContract.Data.MIMETYPE + "=?";
+
+        //process birthday
+        if (newBirthday == null && existingBirthday != null) {
+            //Delete birthday
+
+            String[] queryArg = new String[]{birthdayId, ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE};
+            op = ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                    .withSelection(queryCommon, queryArg);
+            ops.add(op.build());
+
+        } if (newBirthday != null && existingBirthday == null) {
+            //Insert birthday
+            op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                    .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Event.CONTENT_ITEM_TYPE)
+                    .withValue(CommonDataKinds.Event.TYPE, CommonDataKinds.Event.TYPE_BIRTHDAY)
+                    .withValue(CommonDataKinds.Event.START_DATE, newBirthday);
+            ops.add(op.build());
+        } else if (newBirthday != null && existingBirthday != null && !existingBirthday.equals(newBirthday)) {
+            //Update birthday if values are not same
+            String[] queryArg = new String[]{birthdayId, ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE};
+
+            op = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                    .withSelection(queryCommon, queryArg)
+                    .withValue(CommonDataKinds.Event.TYPE, CommonDataKinds.Event.TYPE_BIRTHDAY)
+                    .withValue(CommonDataKinds.Event.START_DATE, newBirthday);
+            ops.add(op.build());
+        }
+    }
+
+    private void addEventUpdateOperations(String rawContactId, List<Item> existingItemList, List<Item> newItemList,
+                                          ArrayList<ContentProviderOperation> ops) {
+
+        ContentProviderOperation.Builder op;
+        String queryCommon = BaseColumns._ID + "=? AND " + ContactsContract.Data.MIMETYPE + "=?";
+
         List<String> existingIdList = new ArrayList<>();
         for (Item item : existingItemList) {
             existingIdList.add(item.identifier);
