@@ -171,7 +171,7 @@ public class Item {
     public static String getWebsiteLabel(int type, Cursor cursor) {
         switch (type) {
             case CommonDataKinds.Website.TYPE_HOMEPAGE:
-                return "home page";
+                return "homepage";
             case CommonDataKinds.Website.TYPE_BLOG:
                 return "blog";
             case CommonDataKinds.Website.TYPE_PROFILE:
@@ -322,6 +322,7 @@ public class Item {
     public static int stringToWebsiteType(String label) {
         if (label != null) {
             switch (label.toLowerCase()) {
+                case "homepage":
                 case "home page":
                     return CommonDataKinds.Website.TYPE_HOMEPAGE;
                 case "blog":
@@ -348,7 +349,7 @@ public class Item {
         if (item == null) {
             return false;
         }
-        if (!equalsStrings(label, item.label)) {
+        if (!equalsStrings(label.toLowerCase(), item.label.toLowerCase())) {
             return false;
         }
         if (!equalsStrings(value, item.value)) {
@@ -366,6 +367,28 @@ public class Item {
             return false;
         }
         return true;
+    }
+
+    public String toString() {
+        String finalString = "";
+        if (this.identifier != null) {
+            finalString = this.identifier;
+        }
+        if (this.label != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.label;
+            } else {
+                finalString += this.label;
+            }
+        }
+        if (this.value != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.value;
+            } else {
+                finalString += this.value;
+            }
+        }
+        return finalString;
     }
 
 }

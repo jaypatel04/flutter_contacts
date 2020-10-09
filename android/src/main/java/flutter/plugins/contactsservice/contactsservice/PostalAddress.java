@@ -96,7 +96,7 @@ public class PostalAddress {
         if (item == null) {
             return false;
         }
-        if (!equalsStrings(label, item.label)) {
+        if (!equalsStrings(label.toLowerCase(), item.label.toLowerCase())) {
             return false;
         }
         if (!equalsStrings(street, item.street)) {
@@ -132,6 +132,57 @@ public class PostalAddress {
             return false;
         }
         return true;
+    }
+
+
+    public String toString() {
+        String finalString = "";
+        if (this.identifier != null) {
+            finalString = this.identifier;
+        }
+        if (this.street != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.street;
+            } else {
+                finalString += this.street;
+            }
+        }
+        if (this.locality != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.locality;
+            } else {
+                finalString += this.locality;
+            }
+        }
+        if (this.city != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.city;
+            } else {
+                finalString += this.city;
+            }
+        }
+        if (this.region != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.region;
+            } else {
+                finalString += this.region;
+            }
+        }
+        if (this.postcode != null) {
+            if (!finalString.isEmpty()) {
+                finalString += " " + this.postcode;
+            } else {
+                finalString += this.postcode;
+            }
+        }
+        if (this.country != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.country;
+            } else {
+                finalString += this.country;
+            }
+        }
+        return finalString;
     }
 
 }
