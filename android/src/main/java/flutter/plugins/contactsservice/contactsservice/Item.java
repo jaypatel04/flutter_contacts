@@ -2,9 +2,10 @@ package flutter.plugins.contactsservice.contactsservice;
 
 import android.database.Cursor;
 
-import static android.provider.ContactsContract.CommonDataKinds;
-
 import java.util.HashMap;
+
+import static android.provider.ContactsContract.CommonDataKinds;
+import static flutter.plugins.contactsservice.contactsservice.StringUtils.equalsStrings;
 
 /***
  * Represents an object which has a label and a value
@@ -340,6 +341,31 @@ public class Item {
             }
         }
         return CommonDataKinds.Website.TYPE_OTHER;
+    }
+
+    public boolean equalValues(Item item) {
+
+        if (item == null) {
+            return false;
+        }
+        if (!equalsStrings(label, item.label)) {
+            return false;
+        }
+        if (!equalsStrings(value, item.value)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean equals(Item item) {
+        if (!equalValues(item)) {
+            return false;
+        }
+        if (!equalsStrings(identifier, item.identifier)) {
+            return false;
+        }
+        return true;
     }
 
 }

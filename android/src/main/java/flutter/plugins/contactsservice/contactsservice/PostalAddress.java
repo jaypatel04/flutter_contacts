@@ -4,10 +4,11 @@ import android.annotation.TargetApi;
 import android.database.Cursor;
 import android.os.Build;
 
+import java.util.HashMap;
+
 import static android.provider.ContactsContract.CommonDataKinds;
 import static android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
-
-import java.util.HashMap;
+import static flutter.plugins.contactsservice.contactsservice.StringUtils.equalsStrings;
 
 @TargetApi(Build.VERSION_CODES.ECLAIR)
 public class PostalAddress {
@@ -89,4 +90,48 @@ public class PostalAddress {
         }
         return StructuredPostal.TYPE_OTHER;
     }
+
+    public boolean equalValues(PostalAddress item) {
+
+        if (item == null) {
+            return false;
+        }
+        if (!equalsStrings(label, item.label)) {
+            return false;
+        }
+        if (!equalsStrings(street, item.street)) {
+            return false;
+        }
+        if (!equalsStrings(locality, item.locality)) {
+            return false;
+        }
+        if (!equalsStrings(city, item.city)) {
+            return false;
+        }
+        if (!equalsStrings(postcode, item.postcode)) {
+            return false;
+        }
+        if (!equalsStrings(region, item.region)) {
+            return false;
+        }
+        if (!equalsStrings(country, item.country)) {
+            return false;
+        }
+        if (!equalsStrings(formattedAddress, item.formattedAddress)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean equals(PostalAddress item) {
+        if (!equalValues(item)) {
+            return false;
+        }
+        if (!equalsStrings(identifier, item.identifier)) {
+            return false;
+        }
+        return true;
+    }
+
 }
