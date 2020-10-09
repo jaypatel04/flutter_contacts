@@ -731,7 +731,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         HashMap<String, Contact> map = new LinkedHashMap<>();
 
         if (cursor != null && cursor.getCount() > 0) {
-            cursor.moveToFirst();
+            cursor.moveToPosition(-1);
         } else {
             return new ArrayList<>(map.values());
         }
