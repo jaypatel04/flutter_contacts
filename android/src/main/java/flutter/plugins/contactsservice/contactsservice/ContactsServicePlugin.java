@@ -1327,7 +1327,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 Log.e(this.getClass().getSimpleName(), "Inserting structure name");
                 // insert
                 op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI);
-                op.withValue(ContactsContract.Data.RAW_CONTACT_ID, getRawContactId(rawContactId));
+                op.withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId);
                 op.withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE);
             } else {
                 Log.e(this.getClass().getSimpleName(), "Updating structure id :" + structureNameId);
