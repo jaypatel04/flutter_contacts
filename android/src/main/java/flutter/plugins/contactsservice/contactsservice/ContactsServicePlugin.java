@@ -127,10 +127,10 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                         "photoHighResolution"), (boolean) call.argument("orderByGivenName"), (String) call.argument("identifiers"), result);
                 break;
             }
-            case getContactsForPhoneMethod: {
-                this.getContactsForPhone(call.method, (String) call.argument("phone"), (boolean) call.argument("withThumbnails"), (boolean) call.argument("photoHighResolution"), (boolean) call.argument("orderByGivenName"), result);
-                break;
-            }
+//            case getContactsForPhoneMethod: {
+//                this.getContactsForPhone(call.method, (String) call.argument("phone"), (boolean) call.argument("withThumbnails"), (boolean) call.argument("photoHighResolution"), (boolean) call.argument("orderByGivenName"), result);
+//                break;
+//            }
             case getAvatarMethod: {
                 final Contact contact = Contact.fromMap((HashMap) call.argument("contact"));
                 this.getAvatar(contact, (boolean) call.argument("photoHighResolution"), result);
@@ -190,29 +190,29 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 }
                 break;
             }
-            case openExistingContactMethod: {
-                final Contact contact = Contact.fromMap((HashMap) call.argument("contact"));
-                if (delegate != null) {
-                    delegate.setResult(result);
-                    delegate.openExistingContact(contact);
-                } else {
-                    result.success(FORM_COULD_NOT_BE_OPEN);
-                }
-                break;
-            }
-            case openContactFormMethod: {
-                if (delegate != null) {
-                    delegate.setResult(result);
-                    delegate.openContactForm();
-                } else {
-                    result.success(FORM_COULD_NOT_BE_OPEN);
-                }
-                break;
-            }
-            case openDeviceContactPickerMethod: {
-                openDeviceContactPicker(result);
-                break;
-            }
+//            case openExistingContactMethod: {
+//                final Contact contact = Contact.fromMap((HashMap) call.argument("contact"));
+//                if (delegate != null) {
+//                    delegate.setResult(result);
+//                    delegate.openExistingContact(contact);
+//                } else {
+//                    result.success(FORM_COULD_NOT_BE_OPEN);
+//                }
+//                break;
+//            }
+//            case openContactFormMethod: {
+//                if (delegate != null) {
+//                    delegate.setResult(result);
+//                    delegate.openContactForm();
+//                } else {
+//                    result.success(FORM_COULD_NOT_BE_OPEN);
+//                }
+//                break;
+//            }
+//            case openDeviceContactPickerMethod: {
+//                openDeviceContactPicker(result);
+//                break;
+//            }
             default: {
                 result.notImplemented();
                 break;
@@ -277,15 +277,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
 
     private static final String[] SUMMARY_PROJECTION = {
             ContactsContract.Data.LOOKUP_KEY,
-            ContactsContract.Data.CONTACT_ID,
             ContactsContract.Contacts.DISPLAY_NAME,
-            ContactsContract.Contacts.Data.MIMETYPE,
-            StructuredName.DISPLAY_NAME,
-            StructuredName.GIVEN_NAME,
-            StructuredName.MIDDLE_NAME,
-            StructuredName.FAMILY_NAME,
-            StructuredName.PREFIX,
-            StructuredName.SUFFIX,
     };
 
     private static final String ORDER_BY_FIELD = (ContactsContract.Contacts.DISPLAY_NAME + " COLLATE NOCASE ASC");
@@ -530,17 +522,17 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 case getContactsByIdentifiersMethod:
                     contacts = getContactsFrom(getCursorForContactIdentifiers(identifiers, orderByGivenName));
                     break;
-                case openDeviceContactPickerMethod:
-                    contacts = getContactsFrom(getCursor(null, (String) params[0], orderByGivenName));
-                    break;
+//                case openDeviceContactPickerMethod:
+//                    contacts = getContactsFrom(getCursor(null, (String) params[0], orderByGivenName));
+//                    break;
                 case getContactsMethod:
-                    contacts = getContactsFrom(getCursor((String) params[0], null, orderByGivenName));
+                    contacts = getContactsFrom(getCursor(null, orderByGivenName));
                     break;
-                case getContactsForPhoneMethod:
-                    contacts = getContactsFrom(getCursorForPhone(((String) params[0]), orderByGivenName));
-                    break;
+//                case getContactsForPhoneMethod:
+//                    contacts = getContactsFrom(getCursorForPhone(((String) params[0]), orderByGivenName));
+//                    break;
                 case getContactsSummaryMethod:
-                    contacts = getContactsFrom(getCursorForSummary(((String) params[0]), orderByGivenName, identifiers), true);
+                    contacts = getContactsSummary(orderByGivenName);
                     break;
                 case getIdentifiersMethod:
                     ArrayList<String> contactList = getContactIdentifiersFrom(getCursorForIdentifiers(orderByGivenName));
@@ -592,7 +584,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         }
     }
 
-    private Cursor getCursor(String query, String lookupKey, boolean orderByGivenName) {
+    private Cursor getCursor(String lookupKey, boolean orderByGivenName) {
 
         if (lookupKey == null) {
             //retrieve all contacts
@@ -695,32 +687,28 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         return null;
     }
 
-    private Cursor getCursorForSummary(String query, boolean orderByGivenName, List<String> identifiers) {
-        String selection = ContactsContract.Data.MIMETYPE + " = ?";
-        ArrayList<String> selectionArgsList = new ArrayList<>();
-        selectionArgsList.add(StructuredName.CONTENT_ITEM_TYPE);
-
-        if (identifiers != null) {
-
-            String selectionString = "";
-
-            for (String i : identifiers) {
-                selectionString += "?,";
-            }
-            selection += (" AND " + ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) + ")");
-            selectionArgsList.addAll(identifiers);
-        } else {
-            if (query != null) {
-                selectionArgsList.add(query + "%");
-                selection += (" AND " + ContactsContract.Contacts.DISPLAY_NAME + " LIKE ?");
-            }
-        }
-
+    private ArrayList<Contact> getContactsSummary(boolean orderByGivenName) {
+        Cursor cursor = null;
         if (orderByGivenName) {
-            return contentResolver.query(ContactsContract.Data.CONTENT_URI, SUMMARY_PROJECTION, selection, selectionArgsList.toArray(new String[selectionArgsList.size()]),
-                    ORDER_BY_FIELD);
+            cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, SUMMARY_PROJECTION, null, null, ORDER_BY_FIELD);
+        } else {
+            cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, SUMMARY_PROJECTION, null, null, null);
         }
-        return contentResolver.query(ContactsContract.Data.CONTENT_URI, SUMMARY_PROJECTION, selection, selectionArgsList.toArray(new String[selectionArgsList.size()]), null);
+
+        if (cursor != null && cursor.getCount() > 0) {
+            ArrayList<Contact> list = new ArrayList<>();
+            while (cursor != null && cursor.moveToNext()) {
+                String lookupKey = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY));
+                Contact contact = new Contact(lookupKey);
+                contact.displayName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                list.add(contact);
+            }
+            if (cursor != null) {
+                cursor.close();
+            }
+            return list;
+        }
+        return new ArrayList<Contact>();
     }
 
     private Cursor getCursorForIdentifiers(boolean orderByGivenName) {
