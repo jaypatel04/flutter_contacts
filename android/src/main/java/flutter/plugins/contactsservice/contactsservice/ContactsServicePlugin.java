@@ -72,6 +72,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
     private static final String getContactsForPhoneMethod = "getContactsForPhone";
     private static final String getContactsForEmailMethod = "getContactsForEmail";
     private static final String deleteContactsByIdentifiersMethod = "deleteContactsByIdentifiers";
+    private static final String getContactsLookupKeysMethod = "getContactsLookupKeys";
 
     private static final String addContactMethod = "addContact";
     private static final String deleteContactMethod = "deleteContact";
@@ -127,10 +128,6 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                         "photoHighResolution"), (boolean) call.argument("orderByGivenName"), (String) call.argument("identifiers"), result);
                 break;
             }
-//            case getContactsForPhoneMethod: {
-//                this.getContactsForPhone(call.method, (String) call.argument("phone"), (boolean) call.argument("withThumbnails"), (boolean) call.argument("photoHighResolution"), (boolean) call.argument("orderByGivenName"), result);
-//                break;
-//            }
             case getAvatarMethod: {
                 final Contact contact = Contact.fromMap((HashMap) call.argument("contact"));
                 this.getAvatar(contact, (boolean) call.argument("photoHighResolution"), result);
@@ -188,6 +185,10 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 } else {
                     result.error(null, "Failed to update the contact, make sure it has a valid identifier", null);
                 }
+                break;
+            }
+            case getContactsLookupKeysMethod: {
+                new GetLookupKeysTask(result).executeOnExecutor(executor);
                 break;
             }
 //            case openExistingContactMethod: {
@@ -522,15 +523,9 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 case getContactsByIdentifiersMethod:
                     contacts = getContactsFrom(getCursorForContactIdentifiers(identifiers, orderByGivenName));
                     break;
-//                case openDeviceContactPickerMethod:
-//                    contacts = getContactsFrom(getCursor(null, (String) params[0], orderByGivenName));
-//                    break;
                 case getContactsMethod:
                     contacts = getContactsFrom(getCursor(null, orderByGivenName));
                     break;
-//                case getContactsForPhoneMethod:
-//                    contacts = getContactsFrom(getCursorForPhone(((String) params[0]), orderByGivenName));
-//                    break;
                 case getContactsSummaryMethod:
                     contacts = getContactsSummary(orderByGivenName);
                     break;
@@ -576,6 +571,41 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         }
 
         protected void onPostExecute(ArrayList<HashMap> result) {
+            if (result == null) {
+                getContactResult.notImplemented();
+            } else {
+                getContactResult.success(result);
+            }
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.CUPCAKE)
+    private class GetLookupKeysTask extends AsyncTask<Object, Void, HashMap> {
+
+        private Result getContactResult;
+
+        public GetLookupKeysTask(MethodChannel.Result result) {
+            this.getContactResult = result;
+        }
+
+        @TargetApi(Build.VERSION_CODES.ECLAIR)
+        protected HashMap doInBackground(Object... params) {
+            HashMap<String, String> lookupKeysMap = new HashMap<>();
+
+            Cursor cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, new String[]{_ID, ContactsContract.Contacts.LOOKUP_KEY}, null, null, null);
+
+            if (cursor != null && cursor.getCount() > 0) {
+                cursor.moveToPosition(-1);
+                while (cursor.moveToNext()) {
+                    lookupKeysMap.put(cursor.getString(cursor.getColumnIndex(_ID)),
+                            cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY)));
+                }
+            }
+
+            return lookupKeysMap;
+        }
+
+        protected void onPostExecute(HashMap result) {
             if (result == null) {
                 getContactResult.notImplemented();
             } else {

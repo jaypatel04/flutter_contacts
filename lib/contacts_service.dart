@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
@@ -165,6 +166,14 @@ class ContactsService {
 
   /// Updates the [contact] if it has a valid identifier
   static Future updateContact(Contact contact) => _channel.invokeMethod('updateContact', Contact._toMap(contact));
+
+  /// Fetches hashmap of all contact id and its lookupkey
+  /// matching [query]
+  static Future<Map> getContactsLookupKeys() async {
+    return await _channel.invokeMethod('getContactsLookupKeys');
+  }
+
+
 
   static Future<Contact> openContactForm({bool iOSLocalizedLabels = true}) async {
     dynamic result = await _channel.invokeMethod('openContactForm', <String, dynamic>{
