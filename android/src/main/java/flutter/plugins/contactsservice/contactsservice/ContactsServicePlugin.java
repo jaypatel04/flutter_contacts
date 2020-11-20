@@ -45,6 +45,7 @@ import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
 import static android.app.Activity.RESULT_CANCELED;
+import static android.provider.BaseColumns._ID;
 import static android.provider.ContactsContract.CommonDataKinds;
 import static android.provider.ContactsContract.CommonDataKinds.Email;
 import static android.provider.ContactsContract.CommonDataKinds.Organization;
@@ -540,7 +541,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                     contacts = getContactsFrom(getCursorForSummary(((String) params[0]), orderByGivenName, identifiers), true);
                     break;
                 case getIdentifiersMethod:
-                    ArrayList<String> contactList = getContactIdentifiersFrom(getCursorForIdentifiers((String) params[0], orderByGivenName));
+                    ArrayList<String> contactList = getContactIdentifiersFrom(getCursorForIdentifiers(orderByGivenName));
                     ArrayList<HashMap> mapList = new ArrayList<>();
                     HashMap map = new HashMap();
                     map.put("identifiers", contactList);
@@ -589,31 +590,39 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         }
     }
 
-    private Cursor getCursor(String query, String rawContactId, boolean orderByGivenName) {
-        String selection = ContactsContract.Data.MIMETYPE + " IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-        ArrayList<String> selectionArgs = new ArrayList<>(Arrays.asList(CommonDataKinds.Nickname.CONTENT_ITEM_TYPE,
-                CommonDataKinds.Note.CONTENT_ITEM_TYPE, Email.CONTENT_ITEM_TYPE,
-                Phone.CONTENT_ITEM_TYPE, StructuredName.CONTENT_ITEM_TYPE, Organization.CONTENT_ITEM_TYPE,
-                StructuredPostal.CONTENT_ITEM_TYPE, CommonDataKinds.Event.CONTENT_ITEM_TYPE, CommonDataKinds.Im.CONTENT_ITEM_TYPE,
-                CommonDataKinds.Relation.CONTENT_ITEM_TYPE, CommonDataKinds.Website.CONTENT_ITEM_TYPE, CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE,
-                CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE));
+    private Cursor getCursor(String query, String lookupKey, boolean orderByGivenName) {
 
-        if (query != null) {
-            selectionArgs.add(query + "%");
-            selection += (" AND " + ContactsContract.Contacts.DISPLAY_NAME + " LIKE ? ");
-        }
+        if (lookupKey == null) {
+            //retrieve all contacts
+            if (orderByGivenName) {
+                return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, null,
+                        null, ORDER_BY_FIELD);
+            } else {
+                return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, null,
+                        null, null);
+            }
+        } else {
+            //get contact with lookup key
+            final String[] projection = new String[]{_ID};
+            Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
+            Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
 
-        if (rawContactId != null) {
-            selection += " AND " + ContactsContract.Data.CONTACT_ID + " = ?";
-            selectionArgs.add(rawContactId);
-        }
+            Cursor contactCursor = contentResolver.query(uri, projection, null, null, null);
 
-        if (orderByGivenName) {
-            return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection,
-                    selectionArgs.toArray(new String[selectionArgs.size()]), ORDER_BY_FIELD);
+            if (contactCursor != null && contactCursor.getCount() > 0) {
+                contactCursor.moveToPosition(0);
+
+                String contactId = contactCursor.getString(contactCursor.getColumnIndex(_ID));
+
+                String selection = ContactsContract.Data.CONTACT_ID + " = ? ";
+                ArrayList<String> selectionArgs = new ArrayList<>();
+                selectionArgs.add(contactId);
+
+                return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection,
+                        selectionArgs.toArray(new String[selectionArgs.size()]), null);
+            }
         }
-        return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection,
-                selectionArgs.toArray(new String[selectionArgs.size()]), null);
+        return null;
     }
 
     private Cursor getCursorForContactIdentifiers(List<String> identifiers, boolean orderByGivenName) {
@@ -702,19 +711,12 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         return contentResolver.query(ContactsContract.Data.CONTENT_URI, SUMMARY_PROJECTION, selection, selectionArgsList.toArray(new String[selectionArgsList.size()]), null);
     }
 
-    private Cursor getCursorForIdentifiers(String query, boolean orderByGivenName) {
-        String selection = null;
-        String[] selectionArgs = null;
-
-        if (query != null) {
-            selectionArgs = new String[]{query + "%"};
-            selection = (ContactsContract.Contacts.DISPLAY_NAME + " LIKE ?");
-        }
-        String[] projection = new String[]{ContactsContract.Data.CONTACT_ID};
+    private Cursor getCursorForIdentifiers(boolean orderByGivenName) {
+        String[] projection = new String[]{ContactsContract.Contacts.LOOKUP_KEY};
         if (orderByGivenName) {
-            return contentResolver.query(ContactsContract.Data.CONTENT_URI, projection, selection, selectionArgs, ORDER_BY_FIELD);
+            return contentResolver.query(ContactsContract.Contacts.CONTENT_URI, projection, null, null, ORDER_BY_FIELD);
         }
-        return contentResolver.query(ContactsContract.Data.CONTENT_URI, projection, selection, selectionArgs, null);
+        return contentResolver.query(ContactsContract.Contacts.CONTENT_URI, projection, null, null, null);
     }
 
     private ArrayList<Contact> getContactsFrom(Cursor cursor) {
@@ -737,15 +739,15 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         }
 
         while (cursor != null && cursor.moveToNext()) {
-            int columnIndex = cursor.getColumnIndex(ContactsContract.Data.CONTACT_ID);
-            String contactId = cursor.getString(columnIndex);
+            int columnIndex = cursor.getColumnIndex(ContactsContract.Data.LOOKUP_KEY);
+            String lookupKey = cursor.getString(columnIndex);
 
-            if (!map.containsKey(contactId)) {
-                map.put(contactId, new Contact(contactId));
+            if (!map.containsKey(lookupKey)) {
+                map.put(lookupKey, new Contact(lookupKey));
             }
-            Contact contact = map.get(contactId);
+            Contact contact = map.get(lookupKey);
 
-            contact.identifier = contactId;
+            contact.identifier = lookupKey;
             contact.displayName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
             String mimeType = cursor.getString(cursor.getColumnIndex(ContactsContract.Data.MIMETYPE));
 
@@ -868,7 +870,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
     private ArrayList<String> getContactIdentifiersFrom(Cursor cursor) {
         ArrayList<String> result = new ArrayList<>();
         while (cursor != null && cursor.moveToNext()) {
-            int columnIndex = cursor.getColumnIndex(ContactsContract.Data.CONTACT_ID);
+            int columnIndex = cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY);
             result.add(cursor.getString(columnIndex));
         }
 
