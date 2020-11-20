@@ -984,6 +984,27 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         return null;
     }
 
+    private String getNamedContactIdFromLookupKey(String lookupKey) {
+        final String[] projection = new String[]{ContactsContract.Contacts.NAME_RAW_CONTACT_ID};
+        Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
+        Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
+
+        if (uri == null) {
+            return null;
+        }
+
+        Cursor contactCursor = contentResolver.query(uri, projection, null, null, null);
+
+        if (contactCursor != null && contactCursor.getCount() > 0) {
+            contactCursor.moveToPosition(0);
+
+            String namedRawContactId = contactCursor.getString(contactCursor.getColumnIndex(ContactsContract.Contacts.NAME_RAW_CONTACT_ID));
+            contactCursor.close();
+            return namedRawContactId;
+        }
+        return null;
+    }
+
     private String addContactWithReturnIdentifier(Contact contact) {
         try {
             ArrayList<ContentProviderOperation> ops = getAddContactOperations(contact);
@@ -1225,7 +1246,14 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         return groupTitle;
     }
 
-    public String getRawContactId(String contactId) {
+    public String getRawContactId(String lookupKey) {
+
+        String contactId = getContactIdFromLookupKey(lookupKey);
+
+        if (contactId == null) {
+            return null;
+        }
+
         String res = "";
 
         Uri uri = ContactsContract.RawContacts.CONTENT_URI;
@@ -1292,12 +1320,11 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 return false;
             }
 
-            String rawContactId = getRawContactId(contact.identifier);
-
-            Log.e(this.getClass().getSimpleName(), "rawContactId : " + rawContactId);
-
-            if (rawContactId == null || rawContactId.isEmpty()) {
+            // Get contact id
+            String rawContactId = getNamedContactIdFromLookupKey(contact.identifier);
+            if (rawContactId == null) {
                 Log.e(this.getClass().getSimpleName(), "Raw id is null for " + contact.identifier);
+
                 return false;
             }
 
@@ -1406,7 +1433,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
             }
 
             if (nicknameId == null) {
-                Log.e(this.getClass().getSimpleName(), "Inserting nicname");
+                Log.e(this.getClass().getSimpleName(), "Inserting nickname");
                 // insert
                 op = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                         .withValue(ContactsContract.Data.MIMETYPE, CommonDataKinds.Nickname.CONTENT_ITEM_TYPE)
