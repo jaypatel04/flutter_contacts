@@ -268,6 +268,7 @@ class Contact {
   String note, sip, phoneticGivenName, phoneticMiddleName, phoneticFamilyName, phoneticName, nickname, department;
   String androidAccountTypeRaw, androidAccountName;
   AndroidAccountType androidAccountType;
+
   Iterable<Item> emails = [];
   Iterable<Item> phones = [];
   Iterable<PostalAddress> postalAddresses = [];
@@ -388,6 +389,16 @@ class Contact {
         : (contact.birthday.year == 0
             ? "--${contact.birthday.month.toString().padLeft(2, '0')}-${contact.birthday.day.toString().padLeft(2, '0')}"
             : "${contact.birthday.year.toString().padLeft(4, '0')}-${contact.birthday.month.toString().padLeft(2, '0')}-${contact.birthday.day.toString().padLeft(2, '0')}");
+
+    if (contact.androidAccountType == AndroidAccountType.google) {
+      contact.androidAccountTypeRaw = "com.google";
+    } else if (contact.androidAccountType == AndroidAccountType.facebook) {
+      contact.androidAccountTypeRaw = "com.facebook";
+    } else if (contact.androidAccountType == AndroidAccountType.whatsapp) {
+      contact.androidAccountTypeRaw = "com.whatsapp";
+    } else {
+      contact.androidAccountTypeRaw = "";
+    }
 
     if (contact.identifier == null) {
       final map = {
@@ -581,7 +592,6 @@ class Contact {
     /// such as Samsung, htc etc...
     return AndroidAccountType.other;
   }
-
 
   @override
   String toString() {
