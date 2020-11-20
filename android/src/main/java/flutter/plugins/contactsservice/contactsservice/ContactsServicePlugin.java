@@ -221,6 +221,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
     }
 
     private static final String[] PROJECTION = {
+            ContactsContract.Data.LOOKUP_KEY,
             ContactsContract.Data.CONTACT_ID,
             ContactsContract.Profile.DISPLAY_NAME,
             ContactsContract.Contacts.Data.MIMETYPE,
@@ -275,6 +276,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
     };
 
     private static final String[] SUMMARY_PROJECTION = {
+            ContactsContract.Data.LOOKUP_KEY,
             ContactsContract.Data.CONTACT_ID,
             ContactsContract.Contacts.DISPLAY_NAME,
             ContactsContract.Contacts.Data.MIMETYPE,
@@ -595,11 +597,9 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         if (lookupKey == null) {
             //retrieve all contacts
             if (orderByGivenName) {
-                return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, null,
-                        null, ORDER_BY_FIELD);
+                return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, null, null, ORDER_BY_FIELD);
             } else {
-                return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, null,
-                        null, null);
+                return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, null, null, null);
             }
         } else {
             //get contact with lookup key
@@ -625,32 +625,44 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         return null;
     }
 
-    private Cursor getCursorForContactIdentifiers(List<String> identifiers, boolean orderByGivenName) {
-        String selection = ContactsContract.Data.MIMETYPE + " IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-        ArrayList<String> selectionArgs = new ArrayList<>(Arrays.asList(CommonDataKinds.Nickname.CONTENT_ITEM_TYPE,
-                CommonDataKinds.Note.CONTENT_ITEM_TYPE, Email.CONTENT_ITEM_TYPE,
-                Phone.CONTENT_ITEM_TYPE, StructuredName.CONTENT_ITEM_TYPE, Organization.CONTENT_ITEM_TYPE,
-                StructuredPostal.CONTENT_ITEM_TYPE, CommonDataKinds.Event.CONTENT_ITEM_TYPE, CommonDataKinds.Im.CONTENT_ITEM_TYPE,
-                CommonDataKinds.Relation.CONTENT_ITEM_TYPE, CommonDataKinds.Website.CONTENT_ITEM_TYPE, CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE,
-                CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE));
+    private Cursor getCursorForContactIdentifiers(List<String> lookupKeyList, boolean orderByGivenName) {
 
-        if (identifiers != null) {
+        List<String> contactIdList = new ArrayList<>();
+        if (lookupKeyList != null) {
+            //First get list of contact ids
+            //Call below code
 
-            String selectionString = "";
+            final String[] projection = new String[]{_ID};
 
-            for (String i : identifiers) {
-                selectionString += "?,";
+            for (String lookupKey : lookupKeyList) {
+                Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
+                Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
+
+                Cursor contactCursor = contentResolver.query(uri, projection, null, null, null);
+
+                if (contactCursor != null && contactCursor.getCount() > 0) {
+                    contactCursor.moveToPosition(0);
+
+                    contactIdList.add(contactCursor.getString(contactCursor.getColumnIndex(_ID)));
+                    contactCursor.close();
+                }
             }
-            selection += (" AND " + ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) + ")");
-            selectionArgs.addAll(identifiers);
         }
+
+        String selectionString = "";
+
+        for (String i : contactIdList) {
+            selectionString += "?,";
+        }
+
+        String selection = ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) + ")";
 
         if (orderByGivenName) {
             return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection,
-                    selectionArgs.toArray(new String[selectionArgs.size()]), ORDER_BY_FIELD);
+                    contactIdList.toArray(new String[contactIdList.size()]), ORDER_BY_FIELD);
         }
         return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection,
-                selectionArgs.toArray(new String[selectionArgs.size()]), null);
+                contactIdList.toArray(new String[contactIdList.size()]), null);
     }
 
     private Cursor getCursorForPhone(String phone, boolean orderByGivenName) {
