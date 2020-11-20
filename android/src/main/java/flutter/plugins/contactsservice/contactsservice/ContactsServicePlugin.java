@@ -926,10 +926,10 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
 
     }
 
-    private static byte[] loadContactPhotoHighRes(final String identifier,
+    private static byte[] loadContactPhotoHighRes(final String lookUpKey,
                                                   final boolean photoHighResolution, final ContentResolver contentResolver) {
         try {
-            final Uri uri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, Long.parseLong(identifier));
+            final Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookUpKey);
             final InputStream input = ContactsContract.Contacts.openContactPhotoInputStream(contentResolver, uri, photoHighResolution);
 
             if (input == null) return null;
