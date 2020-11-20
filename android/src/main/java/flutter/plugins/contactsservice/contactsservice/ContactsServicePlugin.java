@@ -622,6 +622,10 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
             }
         }
 
+        if (contactIdList.size() == 0) {
+            return null;
+        }
+
         String selectionString = "";
 
         for (String i : contactIdList) {
@@ -964,6 +968,10 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
         Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
 
+        if (uri == null) {
+            return null;
+        }
+
         Cursor contactCursor = contentResolver.query(uri, projection, null, null, null);
 
         if (contactCursor != null && contactCursor.getCount() > 0) {
@@ -1233,45 +1241,45 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         return res;
     }
 
-    private boolean deleteContactsByIdentifiers(List<String> identifiers) {
+    private boolean deleteContactsByIdentifiers(List<String> lookupKeyList) {
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
 
-        if (identifiers != null) {
-            String selectionString = "";
-
-            for (String i : identifiers) {
-                selectionString += "?,";
+        if (lookupKeyList != null) {
+            ArrayList<String> contactIdList = new ArrayList<>();
+            for (String lookupKey : lookupKeyList) {
+                String contactId = getContactIdFromLookupKey(lookupKey);
+                if (contactId != null) {
+                    contactIdList.add(contactId);
+                }
             }
-            String selection = (ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) +
-                    ")");
-            ops.add(ContentProviderOperation.newDelete(ContactsContract.RawContacts.CONTENT_URI)
-                    .withSelection(selection, identifiers.toArray(new String[0]))
-                    .build());
-        }
 
-        try {
-            contentResolver.applyBatch(ContactsContract.AUTHORITY, ops);
-            return true;
-        } catch (Exception e) {
-            Log.e("TAG", "Exception encountered while deleting contacts by identifiers: ");
-            e.printStackTrace();
-            return false;
+            for (String contactId : contactIdList) {
+                Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, contactId);
+                if (uri != null) {
+                    ops.add(ContentProviderOperation.newDelete(uri).build());
+                }
+            }
+            if (ops.size() > 0) {
+                try {
+                    contentResolver.applyBatch(ContactsContract.AUTHORITY, ops);
+                    return true;
+                } catch (Exception e) {
+                    Log.e("TAG", "Exception encountered while deleting contacts by identifiers: ");
+                    e.printStackTrace();
+                    return false;
+                }
+            }
         }
+        return true;
     }
 
     private boolean deleteContact(Contact contact) {
-        ArrayList<ContentProviderOperation> ops = new ArrayList<>();
-        ops.add(ContentProviderOperation.newDelete(ContactsContract.RawContacts.CONTENT_URI)
-                .withSelection(ContactsContract.RawContacts.CONTACT_ID + "=?", new String[]{String.valueOf(contact.identifier)})
-                .build());
-        try {
-            contentResolver.applyBatch(ContactsContract.AUTHORITY, ops);
-            return true;
-        } catch (Exception e) {
-            Log.e("TAG", "Exception encountered while deleting contact: ");
-            e.printStackTrace();
+        if (contact == null || contact.identifier == null) {
             return false;
         }
+        List<String> list = new ArrayList();
+        list.add(contact.identifier);
+        return deleteContactsByIdentifiers(list);
     }
 
     private boolean updateContact(Contact contact) {
