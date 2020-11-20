@@ -595,17 +595,10 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
             }
         } else {
             //get contact with lookup key
-            final String[] projection = new String[]{_ID};
-            Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
-            Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
 
-            Cursor contactCursor = contentResolver.query(uri, projection, null, null, null);
+            String contactId = getContactIdFromLookupKey(lookupKey);
 
-            if (contactCursor != null && contactCursor.getCount() > 0) {
-                contactCursor.moveToPosition(0);
-
-                String contactId = contactCursor.getString(contactCursor.getColumnIndex(_ID));
-
+            if (contactId != null) {
                 String selection = ContactsContract.Data.CONTACT_ID + " = ? ";
                 ArrayList<String> selectionArgs = new ArrayList<>();
                 selectionArgs.add(contactId);
@@ -621,22 +614,10 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
 
         List<String> contactIdList = new ArrayList<>();
         if (lookupKeyList != null) {
-            //First get list of contact ids
-            //Call below code
-
-            final String[] projection = new String[]{_ID};
-
             for (String lookupKey : lookupKeyList) {
-                Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
-                Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
-
-                Cursor contactCursor = contentResolver.query(uri, projection, null, null, null);
-
-                if (contactCursor != null && contactCursor.getCount() > 0) {
-                    contactCursor.moveToPosition(0);
-
-                    contactIdList.add(contactCursor.getString(contactCursor.getColumnIndex(_ID)));
-                    contactCursor.close();
+                String contactId = getContactIdFromLookupKey(lookupKey);
+                if (contactId != null) {
+                    contactIdList.add(contactId);
                 }
             }
         }
@@ -962,6 +943,39 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         }
     }
 
+    private String getLookupKeyFromContactId(String contactId) {
+        final String[] projection = new String[]{ContactsContract.Contacts.LOOKUP_KEY};
+        String selection = _ID + " = ?";
+        String[] selectionArgs = new String[]{contactId};
+        Cursor contactCursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, projection, selection, selectionArgs, null);
+
+        if (contactCursor != null && contactCursor.getCount() > 0) {
+            contactCursor.moveToPosition(0);
+
+            String lookupKey = contactCursor.getString(contactCursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY));
+            contactCursor.close();
+            return lookupKey;
+        }
+        return null;
+    }
+
+    private String getContactIdFromLookupKey(String lookupKey) {
+        final String[] projection = new String[]{_ID};
+        Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
+        Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
+
+        Cursor contactCursor = contentResolver.query(uri, projection, null, null, null);
+
+        if (contactCursor != null && contactCursor.getCount() > 0) {
+            contactCursor.moveToPosition(0);
+
+            String contactId = contactCursor.getString(contactCursor.getColumnIndex(_ID));
+            contactCursor.close();
+            return contactId;
+        }
+        return null;
+    }
+
     private String addContactWithReturnIdentifier(Contact contact) {
         try {
             ArrayList<ContentProviderOperation> ops = getAddContactOperations(contact);
@@ -978,7 +992,8 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
             }
 
             if (contactId > 0) {
-                return String.valueOf(contactId);
+                String contactIdStr = String.valueOf(contactId);
+                return getLookupKeyFromContactId(contactIdStr);
             }
 
         } catch (Exception e) {
