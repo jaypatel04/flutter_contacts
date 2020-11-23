@@ -641,9 +641,8 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
     }
 
     private Cursor getCursorForContactIdentifiers(List<String> lookupKeyList, boolean orderByGivenName) {
-
         List<String> contactIdList = new ArrayList<>();
-        if (lookupKeyList != null) {
+        if (lookupKeyList != null && lookupKeyList.size() > 0) {
             for (String lookupKey : lookupKeyList) {
                 String contactId = getContactIdFromLookupKey(lookupKey);
                 if (contactId != null) {
@@ -994,6 +993,11 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
     }
 
     private String getContactIdFromLookupKey(String lookupKey) {
+
+        if (lookupKey == null || lookupKey.isEmpty()) {
+            return null;
+        }
+
         final String[] projection = new String[]{_ID};
         Uri lookupUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
         Uri uri = ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri);
