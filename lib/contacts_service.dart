@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
@@ -33,10 +32,10 @@ class ContactsService {
   /// matching [query]
   static Future<Iterable<Contact>> getContactsSummary(
       {String query,
-        bool withThumbnails = true,
-        bool photoHighResolution = false,
-        bool orderByGivenName = true,
-        bool iOSLocalizedLabels = true}) async {
+      bool withThumbnails = true,
+      bool photoHighResolution = false,
+      bool orderByGivenName = true,
+      bool iOSLocalizedLabels = true}) async {
     Iterable contacts = await _channel.invokeMethod('getContactsSummary', <String, dynamic>{
       'query': query,
       'withThumbnails': withThumbnails,
@@ -51,10 +50,10 @@ class ContactsService {
   /// matching [identifiers]
   static Future<Iterable<Contact>> getContactsSummaryByIdentifiers(
       {List<String> identifiers,
-        bool withThumbnails = true,
-        bool photoHighResolution = false,
-        bool orderByGivenName = true,
-        bool iOSLocalizedLabels = true}) async {
+      bool withThumbnails = true,
+      bool photoHighResolution = false,
+      bool orderByGivenName = true,
+      bool iOSLocalizedLabels = true}) async {
     Iterable contacts = await _channel.invokeMethod('getContactsSummary', <String, dynamic>{
       'identifiers': identifiers.join('|'),
       'withThumbnails': withThumbnails,
@@ -172,8 +171,6 @@ class ContactsService {
   static Future<Map> getContactsLookupKeys() async {
     return await _channel.invokeMethod('getContactsLookupKeys');
   }
-
-
 
   static Future<Contact> openContactForm({bool iOSLocalizedLabels = true}) async {
     dynamic result = await _channel.invokeMethod('openContactForm', <String, dynamic>{
@@ -779,55 +776,73 @@ class Contact {
 
     if (this.emails != null && this.emails.length > 0) {
       finalString += " [ Emails: ";
-      this.emails.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.emails.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.phones != null && this.phones.length > 0) {
       finalString += " [ Phones: ";
-      this.phones.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.phones.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.postalAddresses != null && this.postalAddresses.length > 0) {
       finalString += " [ Postal address: ";
-      this.postalAddresses.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.postalAddresses.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.dates != null && this.dates.length > 0) {
       finalString += " [ Dates: ";
-      this.dates.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.dates.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.instantMessageAddresses != null && this.instantMessageAddresses.length > 0) {
       finalString += " [ IM: ";
-      this.instantMessageAddresses.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.instantMessageAddresses.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.relations != null && this.relations.length > 0) {
       finalString += " [ Relations: ";
-      this.relations.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.relations.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.websites != null && this.websites.length > 0) {
       finalString += " [ Websites: ";
-      this.websites.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.websites.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.socialProfiles != null && this.socialProfiles.length > 0) {
       finalString += " [ Social profiles: ";
-      this.socialProfiles.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.socialProfiles.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
     if (this.labels != null && this.labels.length > 0) {
       finalString += " [ Labels: ";
-      this.labels.forEach((element) { finalString += "{" + element.toString() + "}"; });
+      this.labels.forEach((element) {
+        finalString += "{" + element.toString() + "}";
+      });
       finalString += " ]";
     }
 
@@ -961,16 +976,22 @@ class Item {
   Item({this.identifier, this.label, this.value});
 
   String identifier, label, value;
+  String accountType;
 
   Item.fromMap(Map m) {
     identifier = m["identifier"];
     label = m["label"];
     value = m["value"];
+    accountType = m["accountType"];
   }
 
   @override
   bool operator ==(Object other) {
-    return other is Item && this.identifier == other.identifier && this.label == other.label && this.value == other.value;
+    return other is Item &&
+        this.identifier == other.identifier &&
+        this.label == other.label &&
+        this.value == other.value &&
+        this.accountType == other.accountType;
   }
 
   @override
@@ -993,6 +1014,13 @@ class Item {
         finalString += this.value;
       }
     }
+    if (this.accountType != null) {
+      if (finalString.isNotEmpty) {
+        finalString += ", " + this.accountType;
+      } else {
+        finalString += this.accountType;
+      }
+    }
     return finalString;
   }
 
@@ -1001,9 +1029,9 @@ class Item {
 
   static Map _toMap(Item i) {
     if (i.identifier == null) {
-      return {"label": i.label ?? "", "value": i.value ?? ""};
+      return {"label": i.label ?? "", "value": i.value ?? "", "accountType": i.accountType ?? ""};
     } else {
-      return {"identifier": i.identifier, "label": i.label ?? "", "value": i.value ?? ""};
+      return {"identifier": i.identifier, "label": i.label ?? "", "value": i.value ?? "", "accountType": i.accountType ?? ""};
     }
   }
 }
@@ -1024,7 +1052,7 @@ class SocialProfile {
   }
 
   @override
-  bool operator == (Object other) {
+  bool operator ==(Object other) {
     return other is SocialProfile &&
         this.identifier == other.identifier &&
         this.label == other.label &&

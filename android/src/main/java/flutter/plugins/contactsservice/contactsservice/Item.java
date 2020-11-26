@@ -14,6 +14,7 @@ import static flutter.plugins.contactsservice.contactsservice.StringUtils.equals
 public class Item {
 
     public String identifier, label, value;
+    public String accountType = "";
 
     public Item(String identifier, String label, String value) {
         this.identifier = identifier;
@@ -21,11 +22,19 @@ public class Item {
         this.value = value;
     }
 
+    public Item(String identifier, String label, String value, String accountType) {
+        this.identifier = identifier;
+        this.label = label;
+        this.value = value;
+        this.accountType = accountType;
+    }
+
     HashMap<String, String> toMap() {
         HashMap<String, String> result = new HashMap<>();
         result.put("identifier", identifier);
         result.put("label", label);
         result.put("value", value);
+        result.put("accountType", accountType);
         return result;
     }
 
@@ -386,6 +395,13 @@ public class Item {
                 finalString += ", " + this.value;
             } else {
                 finalString += this.value;
+            }
+        }
+        if (this.accountType != null) {
+            if (!finalString.isEmpty()) {
+                finalString += ", " + this.accountType;
+            } else {
+                finalString += this.accountType;
             }
         }
         return finalString;
