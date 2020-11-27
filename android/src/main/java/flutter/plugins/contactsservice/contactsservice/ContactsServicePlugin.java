@@ -527,7 +527,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                     contacts = getContactsFrom(getCursor(null, orderByGivenName));
                     break;
                 case getContactsSummaryMethod:
-                    contacts = getContactsSummary(orderByGivenName);
+                    contacts = getContactsSummary(identifiers, orderByGivenName);
                     break;
                 case getIdentifiersMethod:
                     ArrayList<String> contactList = getContactIdentifiersFrom(getCursorForIdentifiers(orderByGivenName));
@@ -702,12 +702,39 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
         return null;
     }
 
-    private ArrayList<Contact> getContactsSummary(boolean orderByGivenName) {
+    private ArrayList<Contact> getContactsSummary(List<String> lookupKeyList, boolean orderByGivenName) {
+
+        List<String> contactIdList = new ArrayList<>();
+        if (lookupKeyList != null && lookupKeyList.size() > 0) {
+            for (String lookupKey : lookupKeyList) {
+                String contactId = getContactIdFromLookupKey(lookupKey);
+                if (contactId != null) {
+                    contactIdList.add(contactId);
+                }
+            }
+        }
+
+        if (contactIdList.size() == 0) {
+            return new ArrayList<Contact>();
+        }
+
+        String selectionString = "";
+
+        for (String i : contactIdList) {
+            selectionString += "?,";
+        }
+
+        String selection = ContactsContract.Data.CONTACT_ID + " IN (" + selectionString.substring(0, selectionString.length() - 1) + ")";
+
         Cursor cursor = null;
         if (orderByGivenName) {
-            cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, SUMMARY_PROJECTION, null, null, ORDER_BY_FIELD);
+            cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI, SUMMARY_PROJECTION, selection,
+                    contactIdList.toArray(new String[contactIdList.size()]), ORDER_BY_FIELD);
+//            cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, SUMMARY_PROJECTION, selection, contactIdList.toArray(new String[contactIdList.size()]), ORDER_BY_FIELD);
         } else {
-            cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, SUMMARY_PROJECTION, null, null, null);
+            cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI, SUMMARY_PROJECTION, selection,
+                    contactIdList.toArray(new String[contactIdList.size()]), null);
+//            cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, SUMMARY_PROJECTION, selection, contactIdList.toArray(new String[contactIdList.size()]), null);
         }
 
         if (cursor != null && cursor.getCount() > 0) {
