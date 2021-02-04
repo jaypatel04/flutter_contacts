@@ -1437,20 +1437,20 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 String mimeType = cursor.getString(cursor.getColumnIndex(ContactsContract.Data.MIMETYPE));
                 String accountType = cursor.getString(cursor.getColumnIndex(ContactsContract.RawContacts.ACCOUNT_TYPE));
 
-                if (mimeType.equals(CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE) && (accountType == null || accountType.equals("com.google"))) {
+                if (mimeType.equals(CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE) && StringUtils.validAccountType(accountType)) {
                     structureNameId = id;
-                } else if (mimeType.equals(CommonDataKinds.Organization.CONTENT_ITEM_TYPE) && (accountType == null || accountType.equals("com.google"))) {
+                } else if (mimeType.equals(CommonDataKinds.Organization.CONTENT_ITEM_TYPE) && StringUtils.validAccountType(accountType)) {
                     organizationId = id;
-                } else if (mimeType.equals(CommonDataKinds.Nickname.CONTENT_ITEM_TYPE) && (accountType == null || accountType.equals("com.google"))) {
+                } else if (mimeType.equals(CommonDataKinds.Nickname.CONTENT_ITEM_TYPE) && StringUtils.validAccountType(accountType)) {
                     nicknameId = id;
-                } else if (mimeType.equals(CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE) && (accountType == null || accountType.equals("com.google"))) {
+                } else if (mimeType.equals(CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE) && StringUtils.validAccountType(accountType)) {
                     sipId = id;
-                } else if (mimeType.equals(CommonDataKinds.Note.CONTENT_ITEM_TYPE) && (accountType == null || accountType.equals("com.google"))) {
+                } else if (mimeType.equals(CommonDataKinds.Note.CONTENT_ITEM_TYPE) && StringUtils.validAccountType(accountType)) {
                     noteId = id;
-                } else if (mimeType.equals(CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE) && (accountType == null || accountType.equals("com.google"))) {
+                } else if (mimeType.equals(CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE) && StringUtils.validAccountType(accountType)) {
                     String groupId = cursor.getString(cursor.getColumnIndex(CommonDataKinds.GroupMembership.DATA1));
                     existingLabelIdMap.put(groupId, id);
-                } else if (mimeType.equals(CommonDataKinds.Event.CONTENT_ITEM_TYPE) && (accountType == null || accountType.equals("com.google"))) {
+                } else if (mimeType.equals(CommonDataKinds.Event.CONTENT_ITEM_TYPE) && StringUtils.validAccountType(accountType)) {
                     int eventType = cursor.getInt(cursor.getColumnIndex(CommonDataKinds.Event.TYPE));
                     if (eventType == CommonDataKinds.Event.TYPE_BIRTHDAY) {
                         birthdayId = id;
@@ -1812,7 +1812,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
                 // remove all ids
                 for (String id : existingIdList) {
                     for (Item existingItem : existingItemList) {
-                        if (existingItem.identifier.equals(id) && (existingItem.accountType == null || existingItem.accountType.equals("com.google"))) {
+                        if (existingItem.identifier.equals(id) && StringUtils.validAccountType(existingItem.accountType)) {
 
                             String[] queryArg = new String[]{id, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE};
                             op = ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)

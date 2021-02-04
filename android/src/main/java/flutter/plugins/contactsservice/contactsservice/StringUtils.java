@@ -10,4 +10,21 @@ public class StringUtils {
         return (data == null || data.isEmpty());
     }
 
+    static boolean validAccountType(String accountType) {
+        if (StringUtils.isNullOrEmpty(accountType)) {
+            return true;
+        }
+        String accountTypeLowerCase = accountType.toLowerCase().trim();
+        if (accountTypeLowerCase.contains("whatsapp") ||
+                accountTypeLowerCase.contains("facebook") ||
+                accountTypeLowerCase.contains("linkedin") ||
+                accountTypeLowerCase.contains("telegram") ||
+                accountTypeLowerCase.contains("twitter") ||
+                accountTypeLowerCase.contains("signal")) {
+            return false;
+        }
+
+        return true;
+    }
+
 }
