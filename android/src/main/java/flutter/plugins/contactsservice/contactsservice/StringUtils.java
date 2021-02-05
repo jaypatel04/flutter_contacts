@@ -20,6 +20,7 @@ public class StringUtils {
                 accountTypeLowerCase.contains("linkedin") ||
                 accountTypeLowerCase.contains("telegram") ||
                 accountTypeLowerCase.contains("twitter") ||
+                accountTypeLowerCase.contains("skype") ||
                 accountTypeLowerCase.contains("signal")) {
             return false;
         }
